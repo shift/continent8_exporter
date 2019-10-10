@@ -46,6 +46,7 @@ func (c *BandwidthCollector) Describe(ch chan<- *prometheus.Desc) {
 // Collect definition
 func (c *BandwidthCollector) Collect(ch chan<- prometheus.Metric) {
 	defer func() {
+		// TODO: hide token from message
 		if r := recover(); r != nil {
 			level.Error(logger).Log("msg", "recovered", "err", r)
 		}
@@ -87,22 +88,30 @@ func (c *BandwidthCollector) Collect(ch chan<- prometheus.Metric) {
 		panic(jsonErr)
 	}
 
-	for dc, v := range bw {
-		for k, v := range v {
-			inf, err := strconv.ParseFloat(v.In, 64)
+	for dc, racks := range bw {
+		for rack, rack_metrics := range racks {
+			rackTrafficIn, err := strconv.ParseFloat(rack_metrics.In, 64)
 			if err != nil {
 				panic(err)
 			}
-			outf, err := strconv.ParseFloat(v.Out, 64)
+			rackTrafficOut, err := strconv.ParseFloat(rack_metrics.Out, 64)
 			if err != nil {
 				panic(err)
 			}
 
-			ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, inf, dc, k, v.Time, "in", "total")
-			ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, outf, dc, k, v.Time, "out", "total")
-			for network, v := range v.Networks {
-				ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, inf, dc, k, v.Time, "in", network)
-				ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, outf, dc, k, v.Time, "out", network)
+			ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, rackTrafficIn, dc, rack, rack_metrics.Time, "in", "total")
+			ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, rackTrafficOut, dc, rack, rack_metrics.Time, "out", "total")
+			for network, network_metrics := range rack_metrics.Networks {
+				networkTrafficIn, err := strconv.ParseFloat(network_metrics.In, 64)
+				if err != nil {
+					panic(err)
+				}
+				networkTrafficOut, err := strconv.ParseFloat(network_metrics.Out, 64)
+				if err != nil {
+					panic(err)
+				}
+				ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, networkTrafficIn, dc, rack, network_metrics.Time, "in", network)
+				ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.CounterValue, networkTrafficOut, dc, rack, network_metrics.Time, "out", network)
 			}
 		}
 	}

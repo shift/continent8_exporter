@@ -41,6 +41,7 @@ func (c *EnvironmentCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *EnvironmentCollector) Collect(ch chan<- prometheus.Metric) {
 	defer func() {
 		if r := recover(); r != nil {
+			// TODO: hide token from message
 			level.Error(logger).Log("msg", "recovered", "err", r)
 		}
 	}()
@@ -81,24 +82,24 @@ func (c *EnvironmentCollector) Collect(ch chan<- prometheus.Metric) {
 		panic(jsonErr)
 	}
 
-	for dc, v := range env {
-		for k, v := range v {
-			for metric_type, values := range v {
+	for dc, racks := range env {
+		for rack, rack_metrics := range racks {
+			for metric_type, metric_values := range rack_metrics {
 				value := 0.0
-				switch values.Value.(type) {
-				case string:
-					str := values.Value.(string)
-					if str != "N/A" {
-						value, err = strconv.ParseFloat(str, 64)
+				switch metric_values.Value.(type) {
+					case string:
+						str := metric_values.Value.(string)
+						if str != "N/A" {
+							value, err = strconv.ParseFloat(str, 64)
 
-						if err != nil {
-							panic(err)
+							if err != nil {
+								panic(err)
+							}
 						}
-					}
-				case float64:
-					value = values.Value.(float64)
+					case float64:
+						value = metric_values.Value.(float64)
 				}
-				ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.GaugeValue, value, dc, k, metric_type)
+				ch <- prometheus.MustNewConstMetric(c.counterDesc, prometheus.GaugeValue, value, dc, rack, metric_type)
 			}
 		}
 	}
