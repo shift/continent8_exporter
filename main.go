@@ -15,6 +15,9 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+// TODO: use https://support.continent8.com/data/locations.json to prettify datacenter names
+// TODO: use prettify rack names
+
 var (
 	httpBind       = kingpin.Flag("bind", "The address to listen on for HTTP requests.").Default(":9364").String()
 	scrapeDuration = prometheus.NewSummaryVec(
